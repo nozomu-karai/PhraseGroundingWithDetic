@@ -61,3 +61,9 @@ _darcs
 /models
 /snippet
 /output_ivis
+
+# phrase grounding
+/data_proc
+glove.42B.300d.txt
+glove.42B.300d.zip
+/result

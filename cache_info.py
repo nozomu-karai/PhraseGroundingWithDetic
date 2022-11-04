@@ -131,10 +131,11 @@ if __name__ == "__main__":
             #     )
             # )
             predictions = predictions['instances']
-            cache[os.path.basename(path)] = {}
-            cache[os.path.basename(path)]['classes'] = [demo.metadata.thing_classes[x] for x in predictions.pred_classes.tolist()]
-            cache[os.path.basename(path)]['scores'] = predictions.scores.tolist()
-            cache[os.path.basename(path)]['boxes'] = predictions.pred_boxes.tensor.tolist()
+            id = os.path.basename(path).split('.')[0]
+            cache[id] = {}
+            cache[id]['classes'] = [demo.metadata.thing_classes[x] for x in predictions.pred_classes.tolist()]
+            cache[id]['scores'] = predictions.scores.tolist()
+            cache[id]['boxes'] = predictions.pred_boxes.tensor.tolist()
 
             if args.output:
                 out_filename = os.path.join(args.output, os.path.basename(path))
