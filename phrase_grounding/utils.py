@@ -29,9 +29,13 @@ def load_glove(path):
     return glove
 
 
+def calcurate_area(box):
+    return (box[2] - box[0] + 1) * (box[3] - box[1] + 1)
+
+
 def calcurate_iou(a, b):
-    a_area = (a[2] - a[0] + 1) * (a[3] - a[1] + 1)
-    b_area = (b[2] - b[0] + 1) * (b[3] - b[1] + 1)
+    a_area = calcurate_area(a)
+    b_area = calcurate_area(b)
     
     abx_mn = max(a[0], b[0]) 
     aby_mn = max(a[1], b[1]) 

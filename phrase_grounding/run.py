@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
 import os
+import random
 from logging import getLogger, FileHandler, StreamHandler, DEBUG
 logger = getLogger(__name__)
 logger.setLevel(DEBUG)
@@ -10,7 +11,7 @@ import numpy as np
 from tqdm import tqdm
 
 from dataset import Dataset
-from utils import load_glove, merge_bboxes, calcurate_iou
+from utils import load_glove, merge_bboxes, calcurate_iou, calcurate_area
 
 def get_args():
     parser = ArgumentParser()
@@ -19,6 +20,7 @@ def get_args():
     parser.add_argument('--bbox_file', type=str)
     parser.add_argument('--glove', type=str)
     parser.add_argument('--similarity', type=str, default='cosine', choices=['cosine', 'norm'])
+    parser.add_argument('--strategy', type=str, default='union', choices=['union', 'random', 'largest'])
 
     parser.add_argument('--output', type=str, default='./result')
     args = parser.parse_args()
@@ -27,6 +29,8 @@ def get_args():
 
     fh = FileHandler(os.path.join(args.output, 'run.log'))
     logger.addHandler(fh)
+
+    random.seed(2022)
 
     return args
 
@@ -86,7 +90,19 @@ def main():
                     max_key = det_cls
                     max_val = dist
             
-            pred_box = merge_bboxes(batch['detected_pairs'][max_key]['boxes'])
+            if args.strategy == 'union':
+                pred_box = merge_bboxes(batch['detected_pairs'][max_key]['boxes'])
+            elif args.strategy == 'random':
+                pred_box = random.choice(batch['detected_pairs'][max_key]['boxes'])
+            elif args.strategy == 'largest':
+                max_score = -1
+                max_box = None
+                for box in batch['detected_pairs'][max_key]['boxes']:
+                    area = calcurate_area(box)
+                    if area > max_score:
+                        max_box = box
+                        max_score = area
+                    pred_box = max_box
             pred_boxes.append(pred_box)
     
     logger.info('grounding finished!')
@@ -101,7 +117,6 @@ def main():
             correct += 1
     
     logger.info(f'ACC: {100*correct/total:.2f} (COR: {correct}, TOT: {total})')
-
 
 
 if __name__ == '__main__':
