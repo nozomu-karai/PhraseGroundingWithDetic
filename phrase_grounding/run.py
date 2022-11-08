@@ -78,6 +78,8 @@ def main():
     logger.info('---- Start grounding ----')
     gold_boxes = []
     pred_boxes = []
+    total = 0
+    correct = 0
     for i in tqdm(range(len(dataset))):
         batch = dataset[i]
         for gold_cls, gold_box in batch['gold_pairs']:
@@ -104,18 +106,13 @@ def main():
                         max_score = area
                     pred_box = max_box
             pred_boxes.append(pred_box)
+            total += 1
+            iou_score = calcurate_iou(pred_box, gold_box)
+            if iou_score >= 0.5:
+                correct += 1
     
     logger.info('grounding finished!')
 
-    logger.info('---- Evaluation ----')
-    total = 0
-    correct = 0
-    for pred, gold in zip(pred_boxes, gold_boxes):
-        total += 1
-        iou_score = calcurate_iou(pred, gold)
-        if iou_score >= 0.5:
-            correct += 1
-    
     logger.info(f'ACC: {100*correct/total:.2f} (COR: {correct}, TOT: {total})')
 
 
