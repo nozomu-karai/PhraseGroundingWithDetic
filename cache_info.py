@@ -64,6 +64,10 @@ def get_parser():
         "or a single glob pattern such as 'directory/*.jpg'",
     )
     parser.add_argument(
+        "--flickr_dir",
+        help="A directory of flickr images"
+            )
+    parser.add_argument(
         "--output",
         help="A file or directory to save output visualizations. "
         "If not given, will show output in an OpenCV window.",
@@ -102,7 +106,7 @@ if __name__ == "__main__":
     with open(args.input[0], 'r') as f:
         for line in f:
             line = line.strip()
-            inputs.append('/home/karai/dataset/flickr30k_entities/flickr30k-images/' + line + '.jpg')
+            inputs.append(os.path.join(args.flickr_dir, line + '.jpg'))
     setup_logger(name="fvcore")
     logger = setup_logger()
     logger.info("Arguments: " + str(args))
