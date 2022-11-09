@@ -27,27 +27,31 @@ class Dataset():
 
     def get_gold_pairs(self, id):
         pairs = []
+        sentences = []
         for sentence in self.sentence_json[id]:
             for phrase in sentence['phrases']:
                 phrase_id = phrase['phrase_id']
+                first = phrase['first_word_index']
                 if phrase_id == 0 or phrase_id not in self.bbox_json[id]['boxes']:
                     continue
                 cls = phrase['phrase']
                 box = self.bbox_json[id]['boxes'][str(phrase_id)]
                 box = merge_bboxes(box)
-                pairs.append((cls, box))
+                pairs.append((cls, box, first))
+                sentences.append(sentence['sentence'])
 
-        return pairs
+        return pairs, sentences
 
     def __getitem__(self, idx):
         id = self.ids[idx]
         detected_pairs = self.get_detected_pairs(id)
-        gold_pairs = self.get_gold_pairs(id)
+        gold_pairs, sentences = self.get_gold_pairs(id)
  
         to_return = {
             'id': id,
             'detected_pairs': detected_pairs, 
-            'gold_pairs': gold_pairs
+            'gold_pairs': gold_pairs,
+            'sentences': sentences,
         }
 
         return to_return

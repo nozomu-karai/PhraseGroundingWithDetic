@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 import os
 import random
-from logging import getLogger, FileHandler, StreamHandler, DEBUG
+from logging import getLogger, FileHandler, StreamHandler, DEBUG, Formatter
 logger = getLogger(__name__)
 logger.setLevel(DEBUG)
 sh = StreamHandler()
@@ -11,13 +11,14 @@ import numpy as np
 from tqdm import tqdm
 
 from dataset import Dataset
-from utils import load_glove, merge_bboxes, calcurate_iou, calcurate_area
+from utils import load_glove, merge_bboxes, calcurate_iou, calcurate_area, plot_results
 
 def get_args():
     parser = ArgumentParser()
     parser.add_argument('--detector_output', type=str)
     parser.add_argument('--sentence_file', type=str)
     parser.add_argument('--bbox_file', type=str)
+    parser.add_argument('--image_dir', type=str)
     parser.add_argument('--glove', type=str)
     parser.add_argument('--similarity', type=str, default='cosine', choices=['cosine', 'norm'])
     parser.add_argument('--strategy', type=str, default='union', choices=['union', 'random', 'largest'])
@@ -26,8 +27,11 @@ def get_args():
     args = parser.parse_args()
 
     os.makedirs(args.output, exist_ok=True)
+    os.makedirs(os.path.join(args.output, 'simple'), exist_ok=True)
+    os.makedirs(os.path.join(args.output, 'complex'), exist_ok=True)
 
     fh = FileHandler(os.path.join(args.output, 'run.log'))
+    fh.setFormatter(Formatter('%(asctime)s - %(levelname)s - %(message)s'))
     logger.addHandler(fh)
 
     random.seed(2022)
@@ -76,14 +80,11 @@ def main():
     logger.info(f'num vocab: {num_vocab}, dim: {glove_dim}')
     
     logger.info('---- Start grounding ----')
-    gold_boxes = []
-    pred_boxes = []
     total = 0
     correct = 0
     for i in tqdm(range(len(dataset))):
         batch = dataset[i]
-        for gold_cls, gold_box in batch['gold_pairs']:
-            gold_boxes.append(gold_box)
+        for (gold_cls, gold_box, first), sentence in zip(batch['gold_pairs'], batch['sentences']):
             max_key = None
             max_val = -1
             for det_cls in batch['detected_pairs'].keys():
@@ -105,11 +106,20 @@ def main():
                         max_box = box
                         max_score = area
                     pred_box = max_box
-            pred_boxes.append(pred_box)
             total += 1
             iou_score = calcurate_iou(pred_box, gold_box)
+            th = random.random()
+            img_path = os.path.join(args.image_dir, batch['id'] + '.jpg')
             if iou_score >= 0.5:
                 correct += 1
+
+            if th < 0.01:
+                if len(batch['detected_pairs'][max_key]['boxes']) == 1:
+                    save_path = os.path.join(args.output, 'simple/' + batch['id'] + '.jpg')
+                    plot_results(img_path, first, max_key, pred_box, gold_cls, gold_box, sentence, save_path)
+                else:
+                    save_path = os.path.join(args.output, 'complex/' + batch['id'] + '.jpg')
+                    plot_results(img_path, first, max_key, pred_box, gold_cls, gold_box, sentence, save_path)
     
     logger.info('grounding finished!')
 
