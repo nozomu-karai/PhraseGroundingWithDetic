@@ -30,7 +30,7 @@ unzip glove.42B.300d.zip
 # cache information
 python cache_info.py --config-file configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml --input ~/dataset/flickr30k_entities/test.txt --flickr_dir [Flickr30k images directory] --output [output directory] --vocabulary lvis --opts MODEL.WEIGHTS models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
 # grounding
-python phrase_grounding/run.py --detector_output [output directory]/cache_data.json --sentence_file path/to/sentences_test.json --bbox_file path/to/bounding_boxes_test.json --glove glove.42B.300d.txt
+python phrase_grounding/run.py --detector_output [output directory]/cache_data.json --sentence_file path/to/sentences_test.json --bbox_file path/to/bounding_boxes_test.json --glove glove.42B.300d.txt --image_dir path/to/image
 ```
 
 ## Benchmark evaluation
