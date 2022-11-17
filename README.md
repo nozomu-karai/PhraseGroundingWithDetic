@@ -10,7 +10,7 @@ Implementation is reffering [Phrase Localization Without Paired Training Example
 
 ## Installation
 
-Follow Detiic installation. See [installation instructions](docs/INSTALL.md).
+Follow Detic installation. See [installation instructions](docs/INSTALL.md).
 
 ## How to use
 
