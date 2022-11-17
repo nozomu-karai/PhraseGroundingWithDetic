@@ -2,8 +2,6 @@ import json
 
 from PIL import Image
 import matplotlib.pyplot as plt
-from tqdm import tqdm
-import numpy as np
 
 def load_json(file):
     with open(file, 'r') as f:
@@ -19,16 +17,6 @@ def merge_bboxes(bboxes):
     y_max = [box[3] for box in bboxes]
 
     return [min(x_min), min(y_min), max(x_max), max(y_max)]
-
-
-def load_glove(path):
-    glove = {}
-    with open(path, 'r') as f:
-        for line in tqdm(f):
-            vals = line.rstrip().split(' ')
-            glove[vals[0]] = np.array([float(x) for x in vals[1:]])
-    
-    return glove
 
 
 def calcurate_area(box):

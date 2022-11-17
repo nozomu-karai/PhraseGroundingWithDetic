@@ -7,11 +7,11 @@ logger.setLevel(DEBUG)
 sh = StreamHandler()
 logger.addHandler(sh)
 
-import numpy as np
 from tqdm import tqdm
 
 from dataset import Dataset
-from utils import load_glove, merge_bboxes, calcurate_iou, calcurate_area, plot_results
+from embedding import Glove, FastText
+from utils import merge_bboxes, calcurate_iou, calcurate_area, plot_results
 
 def get_args():
     parser = ArgumentParser()
@@ -19,7 +19,8 @@ def get_args():
     parser.add_argument('--sentence_file', type=str)
     parser.add_argument('--bbox_file', type=str)
     parser.add_argument('--image_dir', type=str)
-    parser.add_argument('--glove', type=str)
+    parser.add_argument('--embedding', type=str, default='glove', choices=['glove', 'fasttext'])
+    parser.add_argument('--embedding_path', type=str)
     parser.add_argument('--similarity', type=str, default='cosine', choices=['cosine', 'norm'])
     parser.add_argument('--strategy', type=str, default='union', choices=['union', 'random', 'largest'])
 
@@ -39,56 +40,34 @@ def get_args():
     return args
 
 
-def get_vector(word, glove, args):
-    tokens = word.lower().split(' ')
-    invocab = 0
-    vector = np.zeros(args.glove_dim) 
-    for token in tokens:
-        if token in glove:
-            vector += glove[token]
-            invocab += 1
-    
-    return vector / invocab if invocab != 0 else vector
-
-
-def distance(x, y, glove, args):
-    x_vec = get_vector(x, glove, args)
-    y_vec = get_vector(y, glove, args)
-
-    if args.similarity == 'cosine':
-        if np.linalg.norm(x_vec) * np.linalg.norm(y_vec) != 0:
-            return np.dot(x_vec, y_vec) / (np.linalg.norm(x_vec) * np.linalg.norm(y_vec))
-        else:
-            return np.linalg.norm(x_vec - y_vec)
-    elif args.similarity == 'norm':
-        return np.linalg.norm(x_vec - y_vec)
-
-
 def main():
     args = get_args()
 
     dataset = Dataset(args.detector_output, args.sentence_file, args.bbox_file)
     logger.info('---- Make dataset ----')
     logger.info(f'dataset size: {len(dataset)}')
- 
-    glove = load_glove(args.glove)
-    num_vocab = len(glove)
-    glove_dim = glove[list(glove.keys())[0]].shape[0]
-    args.glove_dim = glove_dim
-    args.glove_vocab = num_vocab
-    logger.info(f'GloVe is loaded from {args.glove}')
-    logger.info(f'num vocab: {num_vocab}, dim: {glove_dim}')
+    
+    logger.info('Loading embedding')
+    if args.embedding == 'glove':
+        embed = Glove(args.embedding_path)
+        logger.info(f'GloVe is loaded from {args.embedding_path}')
+    elif args.embedding == 'fasttext':
+        embed = FastText(args.embedding_path)
+        logger.info(f'FastText is loaded from {args.embedding_path}')
+    logger.info(f'num vocab: {embed.num_vocab}, dim: {embed.emb_dim}')
     
     logger.info('---- Start grounding ----')
     total = 0
     correct = 0
+    cor_s, tot_s = 0, 0
+    cor_c, tot_c = 0, 0
     for i in tqdm(range(len(dataset))):
         batch = dataset[i]
         for (gold_cls, gold_box, first), sentence in zip(batch['gold_pairs'], batch['sentences']):
             max_key = None
             max_val = -1
             for det_cls in batch['detected_pairs'].keys():
-                dist = distance(gold_cls, det_cls, glove, args)
+                dist = embed.distance(gold_cls, det_cls, args.similarity)
                 if dist > max_val:
                     max_key = det_cls
                     max_val = dist
@@ -110,21 +89,32 @@ def main():
             iou_score = calcurate_iou(pred_box, gold_box)
             th = random.random()
             img_path = os.path.join(args.image_dir, batch['id'] + '.jpg')
-            if iou_score >= 0.5:
-                correct += 1
-
-            if th < 0.01:
-                if len(batch['detected_pairs'][max_key]['boxes']) == 1:
+            
+            if len(batch['detected_pairs'][max_key]['boxes']) == 1:
+                category = 'simple'
+                tot_s += 1
+                if th < 0.01:
                     save_path = os.path.join(args.output, 'simple/' + batch['id'] + '.jpg')
                     plot_results(img_path, first, max_key, pred_box, gold_cls, gold_box, sentence, save_path)
-                else:
+            else:
+                category = 'complex'
+                tot_c += 1
+                if th < 0.01:
                     save_path = os.path.join(args.output, 'complex/' + batch['id'] + '.jpg')
                     plot_results(img_path, first, max_key, pred_box, gold_cls, gold_box, sentence, save_path)
+            
+            if iou_score >= 0.5:
+                correct += 1
+                if category == 'simple':
+                    cor_s += 1
+                elif category == 'complex':
+                    cor_c += 1
     
     logger.info('grounding finished!')
 
     logger.info(f'ACC: {100*correct/total:.2f} (COR: {correct}, TOT: {total})')
-
+    logger.info(f'ACC (simple): {100*cor_s/tot_s:.2f} (COR: {cor_s}, TOT: {tot_s})')
+    logger.info(f'ACC (complex): {100*cor_c/tot_c:.2f} (COR: {cor_c}, TOT: {tot_c})')
 
 if __name__ == '__main__':
     main()

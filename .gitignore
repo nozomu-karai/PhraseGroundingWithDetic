@@ -66,4 +66,7 @@ _darcs
 /data_proc
 glove.42B.300d.txt
 glove.42B.300d.zip
+cc.en.300.bin
+cc.en.300.bin.gz
+
 /result
